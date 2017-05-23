@@ -28,7 +28,7 @@ void ofApp::setup(){
         emitterMatrix[i].lifeSpread = 5.0;
         emitterMatrix[i].numPars = 1;
         emitterMatrix[i].color = ofColor(200,200,255);
-        emitterMatrix[i].colorSpread = ofColor(20,20,0);
+        emitterMatrix[i].colorSpread = ofColor(50,50,50);
         //emitterMatrix[i].size = 32;
     }
 
@@ -44,6 +44,8 @@ void ofApp::setup(){
     emitter1.colorSpread = ofColor(50,50,50);
     emitter1.size = 32;
     emitter1.maxPars = 3000;
+
+    particleState = ParticleState::Circle;
 
     vectorField.allocate(128, 128, 3);
 
@@ -98,17 +100,19 @@ void ofApp::setup(){
     video.setDesiredFrameRate(30);
     video.initGrabber(320, 180);
     threshold = 180;
-
+    bIgnoreBlobs = false;
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
+    /* interactive camera */
     video.update();
     if(video.isFrameNew())
     {
         colorImg.setFromPixels(video.getPixels());
 
         grayImage = colorImg;
+        grayImage.mirror(false,true);
         grayImage.threshold(threshold);
         grayImage.dilate();
         grayImage.dilate();
@@ -132,17 +136,25 @@ void ofApp::update(){
     }
 
     /* main particles */
-    float dt = (ofGetLastFrameTime() * 60);
-    particleSystem.gravitateTo(ofPoint(ofGetWidth()/2,ofGetHeight()/2), gravAcc, 1, 10.0, false);
-    particleSystem.rotateAround(ofPoint(ofGetWidth()/2,ofGetHeight()/2), rotAcc, 10.0, 1, false);
+    float dt = (ofGetLastFrameTime() * 60);    
+    if(particleState == ParticleState::Circle)
+    {
+        particleSystem.gravitateTo(ofPoint(ofGetWidth()/2,ofGetHeight()/2), gravAcc, 1, 10.0, false);
+        particleSystem.rotateAround(ofPoint(ofGetWidth()/2,ofGetHeight()/2), rotAcc, 10.0, 1, false);
+    } else if(particleState == ParticleState::FigureEight)
+    {
+        particleSystem.gravitateTo(ofPoint(ofGetWidth()/4,ofGetHeight()/3), gravAcc, 1, 10.0, false);
+        particleSystem.gravitateTo(ofPoint(ofGetWidth()/4*3,ofGetHeight()/3), gravAcc, 1, 10.0, false);
+        particleSystem.rotateAround(ofPoint(ofGetWidth()/4,ofGetHeight()/3), rotAcc, 10.0, 1, false);
+        particleSystem.rotateAround(ofPoint(ofGetWidth()/4*3,ofGetHeight()/3), rotAcc, 10.0, -1,false);
+    }
     particleSystem.applyVectorField(vectorField.getData(), vectorField.getWidth(), vectorField.getHeight(), vectorField.getNumChannels(), ofGetWindowRect(), fieldMult);
-
     particleSystem.addParticles(emitter1);
     particleSystem.update(dt, drag);
 
     /* matrix */
     int maxBlobs = ofClamp(contourFinder.nBlobs,0,100);
-
+    if(bIgnoreBlobs) maxBlobs = 0;
     for (int i = 0; i < maxBlobs; i++)
     {
         float posx = contourFinder.blobs[i].centroid.x * 6.0f;
@@ -361,7 +373,7 @@ void ofApp::cycleColours()
         break;
         case 1:
             // lavender
-            emitter1.color = ofColor(180,180,200);
+            emitter1.color = ofColor(110,110,150);
             particleSystem.changeColour(emitter1.color);
         break;
         case 2:
@@ -370,18 +382,18 @@ void ofApp::cycleColours()
             particleSystem.changeColour(emitter1.color);
         break;
         case 3:
-            // red
-            emitter1.color = ofColor(0,205,205);
+            // cyan
+            emitter1.color = ofColor(25,145,175);
             particleSystem.changeColour(emitter1.color);
         break;
         case 4:
             // orange
-            emitter1.color = ofColor(205,103,0);
+            emitter1.color = ofColor(165,103,25);
             particleSystem.changeColour(emitter1.color);
         break;
         case 5:
             // magenta
-            emitter1.color = ofColor(205,0,205);
+            emitter1.color = ofColor(175,25,145);
             particleSystem.changeColour(emitter1.color);
         break;
     }
@@ -437,6 +449,9 @@ void ofApp::keyPressed(int key){
         case 'b':
             bDrawDebug = !bDrawDebug;
             break;
+        case 'i':
+            bIgnoreBlobs = !bIgnoreBlobs;
+            break;
         case 'n':
             cycleColours();
             break;
@@ -449,7 +464,21 @@ void ofApp::keyPressed(int key){
             threshold--;
             if(threshold < 0) threshold = 0;
             cout << "threshold="<< threshold << endl;
-    break;
+        break;
+        case 'p':
+            particleState = ParticleState::FigureEight;
+            rotAcc = 227;
+            gravAcc = 270;
+            drag = 0.9696;
+            fieldMult = 0.0984;
+        break;
+        case 'P':
+            particleState = ParticleState::Circle;
+            rotAcc = 207;
+            gravAcc = 185;
+            drag = 0.96;
+            fieldMult = 0.34;
+        break;
         default:
             break;
     }

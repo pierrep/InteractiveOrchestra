@@ -45,20 +45,23 @@ class ofApp : public ofBaseApp{
 
         ofCamera cam;
 
+        /* Particle system */
         ofxParticleSystem particleSystem;
-        int pmouseX, pmouseY;
-        ofVec2f pmouseVel;
-
-        ofxParticleEmitter mouseEmitter;
         ofxParticleEmitter emitter1;
         ofxParticleEmitter emitterMatrix[100];
-        //CrowdMatrix        crowdMatrix[matrixWidth][matrixHeight];
         float rotAcc, gravAcc, fieldMult, drag;
         ofFloatPixels vectorField;
+        enum ParticleState {Circle, FigureEight};
+        ParticleState particleState;
 
+        /* Mouse interaction */
+        int pmouseX, pmouseY;
+        ofVec2f pmouseVel;
+        ofxParticleEmitter mouseEmitter;
+
+        /* Textures and post-processing */
         ofTexture pTex, p1Tex, p2Tex, pMultiTex;
         int displayMode;
-
         ofxPostProcessing post;
 
         /* recording */
@@ -93,7 +96,7 @@ class ofApp : public ofBaseApp{
         ofTexture videoTexture;
         int camWidth;
         int camHeight;
-
+        bool bIgnoreBlobs;
         ofxCvColorImage		colorImg;
         ofxCvGrayscaleImage grayImage;
         ofxCvContourFinder 	contourFinder;

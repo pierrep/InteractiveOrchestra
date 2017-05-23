@@ -1,1 +1,4 @@
 InteractiveOrchestra.qbs.user
+bin/InteractiveOrchestra
+bin/InteractiveOrchestra_debug
+obj/
