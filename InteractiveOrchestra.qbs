@@ -12,15 +12,24 @@ Project{
         name: { return FileInfo.baseName(path) }
 
         files: [
-            'src/main.cpp',
-            'src/ofApp.cpp',
-            'src/ofApp.h',
+            "src/main.cpp",
+            "src/ofApp.cpp",
+            "src/ofApp.h",
         ]
 
         of.addons: [
             'ofxParticles',
             'ofxPostProcessing',
             'ofxVideoRecorder',
+            'ofxMSATimer',
+            'ofxRange',
+            'ofxTextInputField',
+            'ofxTimecode',
+            'ofxTimeline',
+            'ofxTween',
+            'ofxXmlSettings',
+            'ofxOsc',
+            'ofxOpenCv',
         ]
 
         // additional flags for the project. the of module sets some

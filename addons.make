@@ -1,3 +1,12 @@
 ofxParticles
 ofxPostProcessing
 ofxVideoRecorder
+ofxMSATimer
+ofxRange
+ofxTextInputField
+ofxTimecode
+ofxTimeline
+ofxTween
+ofxXmlSettings
+ofxOsc
+ofxOpenCv

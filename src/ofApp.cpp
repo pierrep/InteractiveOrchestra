@@ -7,7 +7,7 @@ void ofApp::exit() {
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofBackground(0, 0, 0);
-    ofSetVerticalSync(false);
+    ofSetVerticalSync(true);
 
     ofHideCursor();
     bDrawDebug = false;
@@ -17,55 +17,50 @@ void ofApp::setup(){
     mouseEmitter.velSpread = ofVec3f(25.0,25.0);
     mouseEmitter.life = 600;
     mouseEmitter.lifeSpread = 5.0;
-    mouseEmitter.numPars = 10;
+    mouseEmitter.numPars = 1;
     mouseEmitter.color = ofColor(200,200,255);
     mouseEmitter.colorSpread = ofColor(20,20,0);
-    mouseEmitter.size = 32;    
+    mouseEmitter.size = 32;
 
-    leftEmitter.setPosition(ofVec3f(ofGetWidth()/2,ofGetHeight()/2));
-    leftEmitter.setVelocity(ofVec3f(10.0,0.0));
-    leftEmitter.posSpread = ofVec3f(10,10.0);
-    leftEmitter.velSpread = ofVec3f(10.0,10);
-    leftEmitter.life = 1000;
-    leftEmitter.lifeSpread = 5.0;
-    leftEmitter.numPars = 3;
-    leftEmitter.color = ofColor(200,100,100);
-    leftEmitter.colorSpread = ofColor(50,50,50);
-    leftEmitter.size = 32;
-    leftEmitter.maxPars = 3000;
+    for(int i = 0; i < 100;i++){
+        emitterMatrix[i].velSpread = ofVec3f(5.0,5.0);
+        emitterMatrix[i].life = 300;
+        emitterMatrix[i].lifeSpread = 5.0;
+        emitterMatrix[i].numPars = 1;
+        emitterMatrix[i].color = ofColor(200,200,255);
+        emitterMatrix[i].colorSpread = ofColor(20,20,0);
+        //emitterMatrix[i].size = 32;
+    }
 
-//    rightEmitter = leftEmitter;
-//    rightEmitter.setPosition(ofVec3f(ofGetWidth()-1,ofGetHeight()*2/3));
-//    rightEmitter.setVelocity(ofVec3f(-10.0,0.0));
-//    rightEmitter.color = ofColor(100,100,200);
-//    rightEmitter.colorSpread = ofColor(50,50,50);
-
-//    topEmitter = leftEmitter;
-//    topEmitter.setPosition(ofVec3f(ofGetWidth()*2/3,0));
-//    topEmitter.setVelocity(ofVec3f(0.0,10.0));
-//    topEmitter.color = ofColor(100,200,100);
-//    topEmitter.colorSpread = ofColor(50,50,50);
-
-//    botEmitter = leftEmitter;
-//    botEmitter.setPosition(ofVec3f(ofGetWidth()/3,ofGetHeight()-1));
-//    botEmitter.setVelocity(ofVec3f(0.0,-10.0));
-//    botEmitter.color = ofColor(200,200,0);
-//    botEmitter.colorSpread = ofColor(50,50,0);
+    emitter1.setPosition(ofVec3f(ofGetWidth()/2,ofGetHeight()/2));
+    emitter1.setVelocity(ofVec3f(10.0,0.0));
+    emitter1.posSpread = ofVec3f(10,10.0);
+    emitter1.velSpread = ofVec3f(10.0,10);
+    emitter1.life = 1000;
+    emitter1.lifeSpread = 5.0;
+    emitter1.numPars = 3;
+    //emitter1.color = ofColor(200,100,100);
+    emitter1.color = ofColor(25,25,102);
+    emitter1.colorSpread = ofColor(50,50,50);
+    emitter1.size = 32;
+    emitter1.maxPars = 3000;
 
     vectorField.allocate(128, 128, 3);
 
     pTex.enableMipmap();
     ofLoadImage(pTex, "p.png");
-
     ofLoadImage(p1Tex, "p1.png");
     ofLoadImage(p2Tex, "p2.png");
     ofLoadImage(pMultiTex, "p_multi.png");
+
+    colourScene = 0;
+    maxColours = 6;
 
     rotAcc = 207;
     gravAcc = 185;
     drag = 0.96;
     fieldMult = 0.34;
-    displayMode = 0;
+    displayMode = 2;
 
     cam.setPosition(ofVec3f(0,0,-1000));
     cam.lookAt(ofVec3f(0,0,0));
@@ -73,14 +68,14 @@ void ofApp::setup(){
     // Setup post-processing chain
     post.init(ofGetWidth(), ofGetHeight());
     post.createPass<ContrastPass>()->setEnabled(false);
-    post.createPass<BloomPass>()->setEnabled(false);
+    post.createPass<BloomPass>()->setEnabled(true);
     post.createPass<DofPass>()->setEnabled(false);
     post.createPass<MotionBlurPass>()->setEnabled(false);
     post.createPass<NoiseWarpPass>()->setEnabled(false);
     post.createPass<RGBShiftPass>()->setEnabled(false);
     post.createPass<EdgePass>()->setEnabled(false);
     post.createPass<ZoomBlurPass>()->setEnabled(false);
-    post.createPass<GodRaysPass>()->setEnabled(false);
+    post.createPass<GodRaysPass>()->setEnabled(true);
     post.createPass<BleachBypassPass>()->setEnabled(false);
 
     /* video recording */
@@ -92,47 +87,93 @@ void ofApp::setup(){
     vidRecorder.setOutputPixelFormat("yuv420p");
     bRecording = false;
 
+    setupTimeline();
+
+    //host = "localhost";//"10.49.85.91";
+    //port = 2346;
+    //receiver.setup(port);
+    //ofLogNotice() << "listening for osc messages from " << host  << " on port " << port;
+
+    video.setDeviceID(0);
+    video.setDesiredFrameRate(30);
+    video.initGrabber(320, 180);
+    threshold = 180;
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
+    video.update();
+    if(video.isFrameNew())
+    {
+        colorImg.setFromPixels(video.getPixels());
 
-    for(int y = 0; y < vectorField.getHeight(); y++)
-        for(int x=0; x< vectorField.getWidth(); x++){
-            int index = vectorField.getPixelIndex(x, y);
-            float angle = ofNoise(x/(float)vectorField.getWidth()*4.0, y/(float)vectorField.getHeight()*4.0,ofGetElapsedTimef()*0.05)*TWO_PI*2.0;
-            ofVec2f dir(cos(angle), sin(angle));
-            dir.normalize().scale(ofNoise(x/(float)vectorField.getWidth()*4.0, y/(float)vectorField.getHeight()*4.0,ofGetElapsedTimef()*0.05+10.0));
-            vectorField.setColor(x, y, ofColor_<float>(dir.x,dir.y, 0));
-        }
+        grayImage = colorImg;
+        grayImage.threshold(threshold);
+        grayImage.dilate();
+        grayImage.dilate();
 
-    particleSystem.gravitateTo(ofPoint(ofGetWidth()/2,ofGetHeight()/2), gravAcc, 1, 10.0, false);
-    particleSystem.rotateAround(ofPoint(ofGetWidth()/2,ofGetHeight()/2), rotAcc, 10.0, false);
-    particleSystem.applyVectorField(vectorField.getData(), vectorField.getWidth(), vectorField.getHeight(), vectorField.getNumChannels(), ofGetWindowRect(), fieldMult);
-    if(ofGetMousePressed(2)){
-        particleSystem.gravitateTo(ofPoint(mouseX,mouseY), gravAcc, 1, 10.0, false);
+        // find contours which are between the size of 20 pixels and 1/3 the w*h pixels.
+        // also, find holes is set to true so we will get interior contours as well....
+        contourFinder.findContours(grayImage, 2, (320*240)/3, 10, true);	// find holes
     }
 
-    float dt = (ofGetLastFrameTime() * 60);
+    //receiveOsc();
 
+    /* vector field */
+    for(unsigned int y = 0; y < vectorField.getHeight(); y++) {
+        for(unsigned int x=0; x < vectorField.getWidth(); x++) {
+            int index = vectorField.getPixelIndex(x, y);
+            float angle = ofNoise(x/(float)vectorField.getWidth()*4.0, y/(float)vectorField.getHeight()*4.0f,ofGetElapsedTimef()*0.05f)*TWO_PI*2.0f;
+            ofVec2f dir(cos(angle), sin(angle));
+            dir.normalize().scale(ofNoise(x/(float)vectorField.getWidth()*4.0f, y/(float)vectorField.getHeight()*4.0f,ofGetElapsedTimef()*0.05f+10.0f));
+            vectorField.setColor(x, y, ofColor_<float>(dir.x,dir.y, 0));
+        }
+    }
+
+    /* main particles */
+    float dt = (ofGetLastFrameTime() * 60);
+    particleSystem.gravitateTo(ofPoint(ofGetWidth()/2,ofGetHeight()/2), gravAcc, 1, 10.0, false);
+    particleSystem.rotateAround(ofPoint(ofGetWidth()/2,ofGetHeight()/2), rotAcc, 10.0, 1, false);
+    particleSystem.applyVectorField(vectorField.getData(), vectorField.getWidth(), vectorField.getHeight(), vectorField.getNumChannels(), ofGetWindowRect(), fieldMult);
+
+    particleSystem.addParticles(emitter1);
     particleSystem.update(dt, drag);
 
-    particleSystem.addParticles(leftEmitter);
-//    particleSystem.addParticles(rightEmitter);
-//    particleSystem.addParticles(topEmitter);
-//    particleSystem.addParticles(botEmitter);
+    /* matrix */
+    int maxBlobs = ofClamp(contourFinder.nBlobs,0,100);
+
+    for (int i = 0; i < maxBlobs; i++)
+    {
+        float posx = contourFinder.blobs[i].centroid.x * 6.0f;
+        float posy = contourFinder.blobs[i].centroid.y * 6.0f;
+
+        emitterMatrix[i].setPosition(ofVec3f(posx,posy),ofVec3f(posx+10,posy+10));
+        emitterMatrix[i].posSpread = ofVec3f(10.0,10.0,0.0);
+        //emitterMatrix[i].setVelocity(posx, posy);
+        particleSystem.addParticles(emitterMatrix[i]);
+        particleSystem.gravitateTo(ofPoint(posx,posy), gravAcc, 1, 10.0, false);
+    }
+
+    /* mouse emitter */
+    if(ofGetMousePressed(2))
+    {
+        particleSystem.gravitateTo(ofPoint(mouseX,mouseY), gravAcc, 1, 10.0, false);
+    }
 
     ofVec2f mouseVel(mouseX-pmouseX,mouseY - pmouseY);
     mouseVel *= 2.0;
     if(ofGetMousePressed(0)){
         mouseEmitter.setPosition(ofVec3f(pmouseX,pmouseY),ofVec3f(mouseX,mouseY));
         mouseEmitter.posSpread = ofVec3f(10.0,10.0,0.0);
-        mouseEmitter.setVelocity(pmouseVel, mouseVel);
+        //mouseEmitter.setVelocity(pmouseVel, mouseVel);
         particleSystem.addParticles(mouseEmitter);
     }
     pmouseX = mouseX;
     pmouseY = mouseY;
     pmouseVel = mouseVel;
+
+
 
     if(bRecording){
         ofPixels pix;
@@ -145,6 +186,7 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+
     if(ofGetKeyPressed('v')){
         ofMesh fieldMesh;
         fieldMesh.disableIndices();
@@ -227,6 +269,122 @@ void ofApp::draw(){
         ofPopStyle();
     }
 
+    if(bShowTimeline) {
+        timeline.draw();
+    }
+
+    if(receivedImage.getWidth() > 0){
+        ofDrawBitmapString("Image:", 10, 160);
+        receivedImage.draw(10, 180);
+    }
+
+    if(bDrawDebug) {
+        ofPushStyle();
+        //video.draw(0,0);
+        ofNoFill();
+        ofDrawRectangle(0,ofGetHeight()-180,320,180);
+        grayImage.draw(0,ofGetHeight()-180);
+
+        for (int i = 0; i < contourFinder.nBlobs; i++){
+            contourFinder.blobs[i].draw(0,ofGetHeight()-180);
+        }
+        ofPopStyle();
+        //cout << "contourFinder.nBlobs: " << contourFinder.nBlobs << endl;
+    }
+
+}
+
+//--------------------------------------------------------------
+void ofApp::receiveOsc()
+{
+        while(receiver.hasWaitingMessages()){
+            ofxOscMessage m;
+            receiver.getNextMessage(m);
+
+            if(m.getAddress() == "/array/value") {
+                array_x = m.getArgAsInt32(0);
+                array_y = m.getArgAsInt32(1);
+                array_val = m.getArgAsInt32(2);
+
+                ofLogNotice() << "received array (" << array_x << ")";
+            }
+            else if(m.getAddress() == "/image" ) {
+                ofBuffer buffer = m.getArgAsBlob(0);
+                receivedImage.load(buffer);
+            }
+            else {
+                // unrecognized message: display on the bottom of the screen
+                string msg_string;
+                msg_string = m.getAddress();
+                msg_string += ": ";
+                for(int i = 0; i < m.getNumArgs(); i++){
+                    // get the argument type
+                    msg_string += m.getArgTypeName(i);
+                    msg_string += ":";
+                    // display the argument - make sure we get the right type
+                    if(m.getArgType(i) == OFXOSC_TYPE_INT32){
+                        msg_string += ofToString(m.getArgAsInt32(i));
+                    }
+                    else if(m.getArgType(i) == OFXOSC_TYPE_FLOAT){
+                        msg_string += ofToString(m.getArgAsFloat(i));
+                    }
+                    else if(m.getArgType(i) == OFXOSC_TYPE_STRING){
+                        msg_string += m.getArgAsString(i);
+                    }
+                    else{
+                        msg_string += "unknown";
+                    }
+                }
+                ofLogNotice() << msg_string;
+
+            }
+        }
+}
+
+//--------------------------------------------------------------
+void ofApp::sceneChange()
+{
+
+}
+
+//--------------------------------------------------------------
+void ofApp::cycleColours()
+{
+    colourScene++;
+    if(colourScene >= maxColours) colourScene = 0;
+
+    switch(colourScene) {
+        case 0:
+            //dark blue
+            emitter1.color = ofColor(25,25,102);
+            particleSystem.changeColour(emitter1.color);
+        break;
+        case 1:
+            // lavender
+            emitter1.color = ofColor(180,180,200);
+            particleSystem.changeColour(emitter1.color);
+        break;
+        case 2:
+            // red
+            emitter1.color = ofColor(200,100,100);
+            particleSystem.changeColour(emitter1.color);
+        break;
+        case 3:
+            // red
+            emitter1.color = ofColor(0,205,205);
+            particleSystem.changeColour(emitter1.color);
+        break;
+        case 4:
+            // orange
+            emitter1.color = ofColor(205,103,0);
+            particleSystem.changeColour(emitter1.color);
+        break;
+        case 5:
+            // magenta
+            emitter1.color = ofColor(205,0,205);
+            particleSystem.changeColour(emitter1.color);
+        break;
+    }
 }
 
 //--------------------------------------------------------------
@@ -279,25 +437,75 @@ void ofApp::keyPressed(int key){
         case 'b':
             bDrawDebug = !bDrawDebug;
             break;
+        case 'n':
+            cycleColours();
+            break;
+        case 'u':
+            threshold++;
+            if(threshold >= 255) threshold = 255;
+            cout << "threshold="<< threshold << endl;
+        break;
+        case 'U':
+            threshold--;
+            if(threshold < 0) threshold = 0;
+            cout << "threshold="<< threshold << endl;
+    break;
         default:
             break;
     }
+
 
     if(key == 'm') {
         if(bRecording) {
             bRecording = false;
             vidRecorder.close();
         } else {
-            bRecording = !bRecording;
+            /* uncomment the below to record */
+            //bRecording = !bRecording;
             if(bRecording && !vidRecorder.isInitialized()) {
                 ofLogNotice() << "Set up video recording";
                 vidRecorder.setup(fileName+ofGetTimestampString()+fileExt, ofGetWidth(), ofGetHeight(), 30, 0, 0);
                 vidRecorder.start();
             }
         }
-
     }
 
+    if(key == 't') {
+        bShowTimeline  = !bShowTimeline;
+        if(bShowTimeline) timeline.show();
+        else timeline.hide();
+    }
+
+}
+
+
+void ofApp::setupTimeline()
+{
+    bShowTimeline = false;
+    timeline.setup();
+
+    timeline.addCurves("curves", ofRange(0, 255));
+    timeline.addBangs("bangs");
+    timeline.addFlags("flags");
+    timeline.addColors("colors");
+    timeline.addLFO("lfo");
+    timeline.addSwitches("switches");
+
+    timeline.setPageName("Page 1");
+    timeline.addPage("Page 2");
+    timeline.addPage("Page 3");
+    timeline.addPage("Page 4");
+    timeline.setCurrentPage(0);
+
+    timeline.enableSnapToOtherKeyframes(false);
+    timeline.setLoopType(OF_LOOP_NORMAL);
+
+    ofAddListener(timeline.events().bangFired, this, &ofApp::bangFired);
+}
+
+//--------------------------------------------------------------
+void ofApp::bangFired(ofxTLBangEventArgs& args){
+    ofLogVerbose() << "bang fired!" << args.flag;
 }
 
 //--------------------------------------------------------------
@@ -336,7 +544,7 @@ void ofApp::mouseEntered(int x, int y){
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){
-//    leftEmitter.setPosition(ofVec3f(0,h/3));
+//    emitter1.setPosition(ofVec3f(0,h/3));
 //    rightEmitter.setPosition(ofVec3f(w-1,h*2/3));
 //    topEmitter.setPosition(ofVec3f(w*2/3,0));
 //    botEmitter.setPosition(ofVec3f(w/3,h-1));
