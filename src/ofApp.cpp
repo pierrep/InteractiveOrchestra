@@ -26,10 +26,10 @@ void ofApp::setup(){
         emitterMatrix[i].velSpread = ofVec3f(5.0,5.0);
         emitterMatrix[i].life = 300;
         emitterMatrix[i].lifeSpread = 5.0;
-        emitterMatrix[i].numPars = 1;
-        emitterMatrix[i].color = ofColor(200,200,255);
+        emitterMatrix[i].numPars = 2;
+        emitterMatrix[i].color = ofColor(100,100,155);
         emitterMatrix[i].colorSpread = ofColor(50,50,50);
-        //emitterMatrix[i].size = 32;
+        emitterMatrix[i].size = 32;
     }
 
     emitter1.setPosition(ofVec3f(ofGetWidth()/2,ofGetHeight()/2));
@@ -39,7 +39,6 @@ void ofApp::setup(){
     emitter1.life = 1000;
     emitter1.lifeSpread = 5.0;
     emitter1.numPars = 3;
-    //emitter1.color = ofColor(200,100,100);
     emitter1.color = ofColor(25,25,102);
     emitter1.colorSpread = ofColor(50,50,50);
     emitter1.size = 32;
@@ -62,6 +61,7 @@ void ofApp::setup(){
     gravAcc = 185;
     drag = 0.96;
     fieldMult = 0.34;
+    gravity = 50;
     displayMode = 2;
 
     cam.setPosition(ofVec3f(0,0,-1000));
@@ -141,19 +141,30 @@ void ofApp::update(){
     {
         particleSystem.gravitateTo(ofPoint(ofGetWidth()/2,ofGetHeight()/2), gravAcc, 1, 10.0, false);
         particleSystem.rotateAround(ofPoint(ofGetWidth()/2,ofGetHeight()/2), rotAcc, 10.0, 1, false);
-    } else if(particleState == ParticleState::FigureEight)
+        particleSystem.addParticles(emitter1);
+    }
+    else if(particleState == ParticleState::FigureEight)
     {
         particleSystem.gravitateTo(ofPoint(ofGetWidth()/4,ofGetHeight()/3), gravAcc, 1, 10.0, false);
         particleSystem.gravitateTo(ofPoint(ofGetWidth()/4*3,ofGetHeight()/3), gravAcc, 1, 10.0, false);
         particleSystem.rotateAround(ofPoint(ofGetWidth()/4,ofGetHeight()/3), rotAcc, 10.0, 1, false);
         particleSystem.rotateAround(ofPoint(ofGetWidth()/4*3,ofGetHeight()/3), rotAcc, 10.0, -1,false);
+        particleSystem.addParticles(emitter1);
+    }
+    else if(particleState == ParticleState::Bubbles)
+    {
+        particleSystem.gravitateTo(ofPoint(ofGetWidth()/2,ofGetHeight()/2), gravAcc, 1, 10.0, false);
+        particleSystem.rotateAround(ofPoint(ofGetWidth()/2,ofGetHeight()/2), rotAcc, 10.0, 1, false);
+        particleSystem.addParticles(emitter1);
+        mouseEmitter.setPosition(ofVec3f(ofGetWidth()/2,ofGetHeight()),ofVec3f(ofGetWidth()/2,ofGetHeight()));
+        mouseEmitter.posSpread = ofVec3f(10.0,10.0,0.0);
+        particleSystem.addParticles(mouseEmitter);
     }
     particleSystem.applyVectorField(vectorField.getData(), vectorField.getWidth(), vectorField.getHeight(), vectorField.getNumChannels(), ofGetWindowRect(), fieldMult);
-    particleSystem.addParticles(emitter1);
     particleSystem.update(dt, drag);
 
     /* matrix */
-    int maxBlobs = ofClamp(contourFinder.nBlobs,0,100);
+    int maxBlobs = ofClamp(contourFinder.nBlobs,0,50);
     if(bIgnoreBlobs) maxBlobs = 0;
     for (int i = 0; i < maxBlobs; i++)
     {
@@ -164,7 +175,7 @@ void ofApp::update(){
         emitterMatrix[i].posSpread = ofVec3f(10.0,10.0,0.0);
         //emitterMatrix[i].setVelocity(posx, posy);
         particleSystem.addParticles(emitterMatrix[i]);
-        particleSystem.gravitateTo(ofPoint(posx,posy), gravAcc, 1, 10.0, false);
+        particleSystem.gravitateTo(ofPoint(posx,posy), gravity, 1, 10.0, false);
     }
 
     /* mouse emitter */
@@ -285,10 +296,6 @@ void ofApp::draw(){
         timeline.draw();
     }
 
-    if(receivedImage.getWidth() > 0){
-        ofDrawBitmapString("Image:", 10, 160);
-        receivedImage.draw(10, 180);
-    }
 
     if(bDrawDebug) {
         ofPushStyle();
@@ -313,16 +320,8 @@ void ofApp::receiveOsc()
             ofxOscMessage m;
             receiver.getNextMessage(m);
 
-            if(m.getAddress() == "/array/value") {
-                array_x = m.getArgAsInt32(0);
-                array_y = m.getArgAsInt32(1);
-                array_val = m.getArgAsInt32(2);
+            if(m.getAddress() == "/value") {
 
-                ofLogNotice() << "received array (" << array_x << ")";
-            }
-            else if(m.getAddress() == "/image" ) {
-                ofBuffer buffer = m.getArgAsBlob(0);
-                receivedImage.load(buffer);
             }
             else {
                 // unrecognized message: display on the bottom of the screen
@@ -364,38 +363,46 @@ void ofApp::cycleColours()
 {
     colourScene++;
     if(colourScene >= maxColours) colourScene = 0;
+}
 
-    switch(colourScene) {
-        case 0:
-            //dark blue
-            emitter1.color = ofColor(25,25,102);
-            particleSystem.changeColour(emitter1.color);
-        break;
+//--------------------------------------------------------------
+void ofApp::setColour(int colourId)
+{
+    ofColor newColour;
+
+    switch(colourId) {
         case 1:
-            // lavender
-            emitter1.color = ofColor(110,110,150);
-            particleSystem.changeColour(emitter1.color);
+            //dark blue
+           newColour = ofColor(25,25,102);
         break;
         case 2:
-            // red
-            emitter1.color = ofColor(200,100,100);
-            particleSystem.changeColour(emitter1.color);
+            // lavender
+            newColour = ofColor(110,110,150);
         break;
         case 3:
-            // cyan
-            emitter1.color = ofColor(25,145,175);
-            particleSystem.changeColour(emitter1.color);
+            // red
+            newColour = ofColor(200,100,100);
         break;
         case 4:
-            // orange
-            emitter1.color = ofColor(165,103,25);
-            particleSystem.changeColour(emitter1.color);
+            // cyan
+            newColour = ofColor(25,145,175);
         break;
         case 5:
-            // magenta
-            emitter1.color = ofColor(175,25,145);
-            particleSystem.changeColour(emitter1.color);
+            // orange
+            newColour = ofColor(165,103,25);
         break;
+        case 6:
+            // magenta
+            newColour = ofColor(175,25,145);
+        break;
+        default:
+        break;
+    }
+
+    particleSystem.changeColour(newColour);
+    emitter1.color = mouseEmitter.color = newColour;
+    for(int i = 0; i < 50;i++){
+        emitterMatrix[i].color = ofColor(100,100,155);
     }
 }
 
@@ -403,7 +410,8 @@ void ofApp::cycleColours()
 void ofApp::keyPressed(int key){
 
     unsigned idx = key - '0';
-    if (idx < post.size()) post[idx]->setEnabled(!post[idx]->getEnabled());
+    //if (idx < post.size()) post[idx]->setEnabled(!post[idx]->getEnabled());
+    if (idx < 7) setColour(idx);
 
     switch (key) {
         case 'r':
@@ -465,19 +473,39 @@ void ofApp::keyPressed(int key){
             if(threshold < 0) threshold = 0;
             cout << "threshold="<< threshold << endl;
         break;
-        case 'p':
+        case 'j':
+            particleState = ParticleState::Bubbles;
+            rotAcc = 128;
+            gravAcc = 126;
+            drag = 0.91;
+            fieldMult = 0.34;
+        break;
+        case 'k':
             particleState = ParticleState::FigureEight;
             rotAcc = 227;
             gravAcc = 270;
             drag = 0.9696;
             fieldMult = 0.0984;
         break;
-        case 'P':
+        case 'l':
             particleState = ParticleState::Circle;
             rotAcc = 207;
             gravAcc = 185;
             drag = 0.96;
             fieldMult = 0.34;
+        break;
+        case 'p':
+            particleSystem.setImmortal(false);
+        break;
+//        case 'P':
+//            particleSystem.setImmortal(true);
+//        break;
+
+        case 'q':
+            post[4]->setEnabled(!post[4]->getEnabled());
+        break;
+        case 'w':
+            post[7]->setEnabled(!post[7]->getEnabled());
         break;
         default:
             break;

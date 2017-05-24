@@ -8,15 +8,6 @@
 #include "ofxOsc.h"
 #include "ofxOpenCv.h"
 
-#define matrixWidth 320
-#define matrixHeight 240
-
-class CrowdMatrix {
-public:
-    int x;
-    int y;
-    int value;
-};
 
 class ofApp : public ofBaseApp{
 
@@ -39,6 +30,7 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 	
         void cycleColours();
+        void setColour(int colour);
         void sceneChange();
         void setupTimeline();
         void receiveOsc();
@@ -48,11 +40,12 @@ class ofApp : public ofBaseApp{
         /* Particle system */
         ofxParticleSystem particleSystem;
         ofxParticleEmitter emitter1;
-        ofxParticleEmitter emitterMatrix[100];
+        ofxParticleEmitter emitterMatrix[200];
         float rotAcc, gravAcc, fieldMult, drag;
         ofFloatPixels vectorField;
-        enum ParticleState {Circle, FigureEight};
+        enum ParticleState {Bubbles, Circle, FigureEight};
         ParticleState particleState;
+        float gravity;
 
         /* Mouse interaction */
         int pmouseX, pmouseY;
@@ -81,10 +74,6 @@ class ofApp : public ofBaseApp{
         string host;
         int port;
         int msg_string;
-        int array_x;
-        int array_y;
-        int array_val;
-        ofImage receivedImage;
 
         /* Colour changes */
         unsigned int colourScene;
@@ -100,7 +89,8 @@ class ofApp : public ofBaseApp{
         ofxCvColorImage		colorImg;
         ofxCvGrayscaleImage grayImage;
         ofxCvContourFinder 	contourFinder;
-         int 				threshold;
+        int 				threshold;
+
 
 
     private:
